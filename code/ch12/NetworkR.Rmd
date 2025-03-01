@@ -1,0 +1,547 @@
+---
+title: "Network R for Data Mining Book"
+author: "Johnny Zhang"
+date: "December 16, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(intergraph) ## asIgraph, asNetwor library(sna)
+library(network)
+library(sna)
+
+library(tidyverse)
+library(gplots) ## heatmap
+```
+
+## Data
+
+We first create a network object with the covariates.
+
+```{r}
+## nfriends, imputed using mean for one student
+nonnetwork <- read.csv("t1_nonnetwork.csv")
+
+wechat <- read.csv("t1_wechat.csv")
+wechat <- symmetrize(wechat, rule="weak")
+
+wechat.network <- network(wechat, directed=F)
+
+## adding the covariates
+depress <- nonnetwork %>% select(depress1:depress7) %>% rowSums(na.rm = T)
+lonely <- nonnetwork %>% select(sad1:sad10) %>% rowSums(na.rm = T)
+happy <- nonnetwork %>% select(happy1:happy4) %>% rowSums(na.rm = T)
+set.vertex.attribute(wechat.network, "depress", depress)
+set.vertex.attribute(wechat.network, "lonely", lonely)
+set.vertex.attribute(wechat.network, "happy", happy)
+
+set.vertex.attribute(wechat.network, "gpa", nonnetwork$gpa)
+set.vertex.attribute(wechat.network, "age", nonnetwork$age)
+set.vertex.attribute(wechat.network, "gender", as.character(nonnetwork$gender))
+set.vertex.attribute(wechat.network, "smoke", as.character(nonnetwork$smoke))
+set.vertex.attribute(wechat.network, "drink", nonnetwork$drink)
+set.vertex.attribute(wechat.network, "nfriend", nonnetwork$wechat)
+bmi <- nonnetwork$weight/(nonnetwork$height/100)^2
+set.vertex.attribute(wechat.network, "bmi", bmi)
+
+summary(wechat.network, print.adj = F)
+```
+
+## Data visualization
+
+### heat map
+
+```{r}
+wechat.mat <- as.matrix(wechat)
+pdf("heatmap.pdf", width=7, height=7)
+par(mar=c(0,1,1,0))
+heatmap.2(wechat.mat, dendrogram='none', Rowv=F, Colv=F,trace='none', key=F, lhei = c(0.05, 0.95), lwid=c(.05, .95), col=colorpanel(n=2,low="grey", high="black"))
+dev.off()
+
+pdf("heatmap.ordered.pdf", width=7, height=7)
+par(mar=c(0,1,1,0))
+heatmap.2(wechat.mat, dendrogram='none', Rowv=TRUE, Colv="Rowv", trace='none', key=F, lhei = c(0.05, 0.95), lwid=c(.05, .95), col=colorpanel(n=2,low="grey", high="black"))
+dev.off()
+```
+
+
+### Network plot
+
+```{r}
+## plot the whole network
+pdf("whole.network.pdf", width=7, height=7)
+par(mar=c(0,0,0,1))
+set.seed(3)
+layout.coord <- gplot(wechat.network, gmode="graph", usearrows=F, vertex.cex=1.5, vertex.col='black', edge.col='grey75', mode="fruchtermanreingold")
+dev.off()
+
+pdf("whole.network.mds.pdf", width=7, height=7)
+par(mar=c(0,0,0,1))
+layout.coord <- gplot(wechat.network, gmode="graph", usearrows=F, vertex.cex=1.5, vertex.col='blue', edge.col='grey75', mode="mds")
+dev.off()
+
+#save(layout.coord, file="all.coord.RData")
+
+## plot the groups
+## according to gender
+pdf("whole.network.gender.pdf", width=7, height=7)
+par(mar=c(0,0,0,1))
+gender.col <- ifelse(nonnetwork$gender==1, "blue", "red") ## 1 female; 0 male
+gplot(wechat.network, gmode="graph", usearrows=F, vertex.cex=1.5, vertex.col=gender.col, edge.col='grey75', coord = layout.coord)
+legend("topright", c("Female", "Male"), col=c("blue", "red"), pch=c(16,16), cex = c(1.5, 1.5))
+dev.off()
+
+## according to class
+pdf("whole.network.class.pdf", width=7, height=7)
+par(mar=c(0,0,0,1))
+gplot(wechat.network, gmode="graph", usearrows=F, vertex.cex=1.5, vertex.col=nonnetwork$class, edge.col='grey75', coord = layout.coord)
+legend("topright", c("A", "B", "C", "D", "E", "F"), col=1:6, pch=rep(16,6), cex = rep(1.5, 6))
+dev.off()
+
+## plot a subset of data
+# Take out a subset of the network - the first 15 students
+wechat.sub.net <- wechat.network
+wechat.sub.net <- delete.vertices(wechat.sub.net, 16:165)
+summary(wechat.sub.net)
+
+pdf("sub.network.pdf", width=7, height=7)
+par(mar=c(1,1,1,1))
+set.seed(2)
+layout.coord <- gplot(wechat.sub.net, gmode="graph", usearrows=F, vertex.cex=1.8, vertex.col='black', edge.col='grey75', mode="fruchtermanreingold", displaylabels=T, label.pos=5, label.col = "white")
+dev.off()
+
+pdf("network-4-1.pdf", width=7, height=7)
+par(mar=c(1,1,1,1))
+set.seed(2)
+layout.coord <- gplot(wechat.sub.net, gmode="graph", usearrows=F, vertex.cex=1.8, vertex.col='black', edge.col='grey75', mode="fruchtermanreingold", displaylabels=T, label.pos=5, label.col = "white")
+dev.off()
+
+pdf("network-4-2.pdf", width=7, height=7)
+par(mar=c(1,1,1,1))
+layout.coord <- gplot(wechat.sub.net, gmode="graph", usearrows=F, vertex.cex=1.8, vertex.col='black', edge.col='grey75', mode="circle", displaylabels=T, label.pos=5, label.col = "white")
+dev.off()
+
+pdf("network-4-3.pdf", width=7, height=7)
+par(mar=c(1,1,1,1))
+layout.coord <- gplot(wechat.sub.net, gmode="graph", usearrows=F, vertex.cex=1.8, vertex.col='black', edge.col='grey75', mode="mds", displaylabels=T, label.pos=5, label.col = "white")
+dev.off()
+
+pdf("network-4-4.pdf", width=7, height=7)
+par(mar=c(1,1,1,1))
+layout.coord <- gplot(wechat.sub.net, gmode="graph", usearrows=F, vertex.cex=1.8, vertex.col='black', edge.col='grey75', mode="random", displaylabels=T, label.pos=5, label.col = "white")
+dev.off()
+
+## plot the groups
+## according to gender
+pdf("sub.network.gender.pdf", width=7, height=7)
+par(mar=c(1,1,1,1))
+gender.col <- ifelse(nonnetwork$gender[1:15]==1, "blue", "red") ## 1 female; 0 male
+gplot(wechat.sub.net, gmode="graph", usearrows=F, vertex.cex=1.8, vertex.col=gender.col, edge.col='grey75', coord = layout.coord, displaylabels=T, label.pos=5, label.col = "white")
+legend("topright", c("Female", "Male"), col=c("blue", "red"), pch=c(16,16), cex = c(1.5, 1.5))
+dev.off()
+```
+
+## Network Statistics
+### Whole network
+```{r}
+## density
+gden(wechat.network)
+
+## transitivity
+gtrans(wechat.network)
+```
+
+### node statistics
+
+```{r}
+nodedegree <- degree(wechat.network, cmode="indegree")
+nodedegree
+which.max(nodedegree)
+which.min(nodedegree)
+mean(nodedegree)
+
+pdf("node-degree.pdf", width=7, height=7)
+hist(nodedegree, xlab="Degree", main="")
+dev.off()
+```
+
+```{r}
+incloseness = closeness(wechat.network, cmode = "suminvundir")
+incloseness
+
+index <- 1:165
+
+index[which.max(incloseness)]
+index[which.min(incloseness)]
+
+pdf("node-closeness.pdf", width=7, height=7)
+hist(incloseness, xlab="Closeness", main="")
+dev.off()
+```
+
+```{r}
+node.betweenness <- betweenness(wechat.network, cmode = "undirected")
+node.betweenness
+
+index <- 1:165
+
+index[which.max(node.betweenness)]
+index[which.min(node.betweenness)]
+
+pdf("node-betweenness.pdf", width=7, height=7)
+hist(node.betweenness, xlab="Betweenness", main="")
+dev.off()
+```
+
+#### page rank
+
+```{r}
+node.page.rank <- igraph::page.rank(asIgraph(wechat.network))$vector
+
+node.page.rank
+
+index[which.max(node.page.rank)]
+index[which.min(node.page.rank)]
+
+pdf("node-page.rank.pdf", width=7, height=7)
+hist(node.page.rank, xlab="PageRank", main="")
+dev.off()
+```
+### Dyadic statistics
+
+the shortest paths from or to the vertices in the network.
+
+```{r}
+shortestpath <- igraph::distances(asIgraph(wechat.network))
+
+#shortestpath
+max(shortestpath)
+
+table(shortestpath)/(165*164)
+
+pdf("shortestpath.pdf", width=7, height=7)
+par(mar=c(0,1,1,0))
+heatmap.2(shortestpath, dendrogram='none', Rowv=F, Colv=F,trace='none', key=F, lhei = c(0.05, 0.95), lwid=c(.05, .95), col=colorpanel(n=5,low="white", high="black"))
+dev.off()
+
+pdf("shortestpath.pdf", width=7, height=7)
+par(mar=c(0,1,1,0))
+heatmap.2(shortestpath, dendrogram='none', Rowv=F, Colv=F,trace='none', key=F, lhei = c(0.05, 0.95), lwid=c(.05, .95), col=1:5)
+#text(5:8, 10, labels=1:4, col=2:5)
+#legend('topright', legend=0:4, col=1:5)
+dev.off()
+
+pdf("shortestpath.pdf", width=7, height=7)
+par(mar=c(0,1,1,0))
+heatmap.2(shortestpath, dendrogram='none', Rowv=F, Colv=F,trace='none', key=T, col=1:5, density.info="none", key.title="", key.xlab = "", keysize=0.8, lhei = c(0.2, 0.8), lwid=c(.2, .8))
+#text(5:8, 10, labels=1:4, col=2:5)
+#legend('topright', legend=0:4, col=1:5)
+dev.off()
+
+pdf("shortestpath.pdf", width=7, height=7)
+par(mar=c(0,1,1,0))
+heatmap.2(shortestpath, dendrogram='none', Rowv=F, Colv=F,trace='none', key=T, col=1:5, density.info="none", key.title="", key.xlab = "", keysize=1)
+#text(5:8, 10, labels=1:4, col=2:5)
+#legend('topright', legend=0:4, col=1:5)
+dev.off()
+```
+
+## Basic network analysis
+
+### t-test
+
+```{r}
+dset1 <- as.data.frame(cbind(gender = nonnetwork$gender,
+                    gpa = nonnetwork$gpa,
+                    bmi = bmi,
+                    wechat = log(nonnetwork$wechat+1),
+                    smoke = nonnetwork$smoke,
+                    drink = nonnetwork$drink,
+                    depress = depress,
+                    happy = happy,
+                    lonely = lonely,
+                    degree = log(nodedegree),
+                    closseness = log(incloseness),
+                    betweenness = log(node.betweenness),
+                    pagerank = log(node.page.rank),
+                    major = nonnetwork$class,
+                    age = nonnetwork$age
+                    ))
+```
+
+```{r}
+## gender difference in degree
+t.test(degree ~ gender, data=dset1)
+
+pdf("degree-boxplot.pdf", width=7, height=7)
+boxplot(degree ~ gender, data=dset1, ylab="Degree", xlab="Gender", names=c("Male", "Female"))
+dev.off()
+## robust t-test
+library(WRS2)
+t1way(degree ~ gender, data=dset1)
+
+## gender differences in betweenness
+t.test(betweenness ~ gender, data=dset1)
+pdf("between-boxplot.pdf", width=7, height=7)
+boxplot(betweenness ~ gender, data=dset1, ylab="Betweenness", xlab="Gender", names=c("Male", "Female"))
+dev.off()
+## robust t-test
+t1way(betweenness ~ gender, data=dset1)
+
+## gender differences in pagerank
+t.test(pagerank ~ gender, data=dset1)
+pdf("pagerank-boxplot.pdf", width=7, height=7)
+boxplot(pagerank ~ gender, data=dset1, ylab="PageRank", xlab="Gender", names=c("Male", "Female"))
+dev.off()
+## robust t-test
+t1way(pagerank ~ gender, data=dset1)
+```
+
+### regression and path analysis
+
+
+```{r}
+View(cor(dset1))
+```
+
+Matrix plot of the variables
+
+```{r}
+library(lattice)
+
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...) {
+  usr <- par("usr")
+  on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r <- (cor(x, y, use = "complete.obs"))
+  txt <- format(c(r, 0.123456789), digits = digits)[1]
+  txt <- paste(prefix, txt, sep = "")
+  text(0.5, 0.5, txt, cex =  4*(1 + abs(r)) / 2)
+}
+
+panel.hist <- function(x, ...) {
+  usr <- par("usr")
+  on.exit(par(usr))
+  par(usr = c(usr[1:2], 0, 1.5) )
+  h <- hist(x, plot = FALSE)
+  breaks <- h$breaks
+  nB <- length(breaks)
+  y <- h$counts
+  y <- y/max(y)
+  rect(breaks[-nB], 0, breaks[-1], y, col = "white", ...)
+  box()
+}
+
+pdf("matrixplot.pdf", width=7, height=7)
+pairs(dset1[,c("degree", "gpa", "bmi", "happy", "lonely")],
+      upper.panel = panel.cor,
+      diag.panel  = panel.hist,
+      lower.panel = panel.smooth)
+dev.off()
+```
+
+### Mediation analysis
+
+```{r}
+library(lavaan)
+
+m1 <-'
+degree ~ a1*gpa + a2*bmi
+happy ~ c1*gpa + +c2*bmi + b1*degree
+lonely ~ c3*gpa + +c4*bmi + b2*degree
+
+## mediation effect
+med1 := a1*b1
+med2 := a1*b2
+med3 := a2*b1
+med4 := a2*b2
+med5 := (a1+a2)*b1
+med6 := (a1+a2)*b2
+med7 := a1*b1 + c1
+med8 := a1*b2 + c3
+med9 := a2*b1 + c2
+med10 := a2*b2 + c4
+'
+
+m1.res <- sem(m1, data=dset1)
+
+summary(m1.res)
+```
+
+## Stochastic block model
+
+```{r}
+m.index <- index[nonnetwork$gender==0]
+f.index <- index[nonnetwork$gender==1]
+
+order.index <- c(m.index, f.index)
+
+wechat.mat.block <- wechat.mat[order.index, order.index]
+
+length(m.index)
+
+sum(wechat.mat.block[1:74, 1:74])/(74*73)
+
+sum(wechat.mat.block[75:165, 75:165])/(94*93)
+
+sum(wechat.mat.block[1:74, 75:165])/(94*74)
+```
+
+### Estimate the SBM
+
+```{r}
+library(blockmodels)
+
+sbm1 <- BM_bernoulli("SBM_sym", wechat.mat)
+sbm1$estimate()
+
+which.max(sbm1$ICL)
+
+## Plot the ICL
+pdf("wechat.ICL.pdf", width=7, height=7)
+plot(1:15, sbm1$ICL, xlab="Number of blocks", ylab="ICL")
+dev.off()
+
+sbm1$memberships[[10]]$plot()
+sbm1$memberships[[10]]$Z
+table(sbm1$memberships[[10]]$map()$C) 
+table(sbm1$memberships[[7]]$map()$C) 
+table(sbm1$memberships[[6]]$map()$C)
+table(sbm1$memberships[[5]]$map()$C)
+
+table(sbm1$memberships[[7]]$map()$C, sbm1$memberships[[6]]$map()$C)
+
+round(sbm1$model_parameters[[6]]$pi, 3)
+
+sbm1$memberships[[7]]$map()$C ## class membership
+```
+
+```{r}
+## plot the data with determined blocks
+pdf("wechat.sbm.pdf", width=7, height=7)
+par(mar=c(0,0,0,1))
+set.seed(3)
+layout.coord <- gplot(wechat.network, gmode="graph", usearrows=F, vertex.cex=1.5, vertex.col=sbm1$memberships[[6]]$map()$C, edge.col='grey75', mode="fruchtermanreingold")
+legend("topleft", legend=1:6, col=1:6, pch=16, cex = 1.5)
+dev.off()
+
+```
+
+## Exponential random graph models
+
+### The model with edge only
+
+```{r}
+library(ergm)
+t1.model1 <- ergm(wechat.network ~ edges ,
+   control=control.ergm(seed=40))
+
+summary(t1.model1)
+
+exp(coef(t1.model1))
+plogis(coef(t1.model1))
+
+t1.model1 <- ergm(wechat.network ~ edges + kstar(2) ,
+                  estimate = "MPLE",
+   control=control.ergm(seed=40))
+
+summary(t1.model1)
+
+t1.model1 <- ergm(wechat.network ~ edges + kstar(2) + triangle,
+                  estimate = "MPLE")
+
+summary(t1.model1)
+
+t1.model1 <- ergm(wechat.network ~ edges + kstar(2) + triangle)
+
+summary(t1.model1)
+
+
+```
+
+### model with node covariates
+
+```{r}
+t1.model1 <- ergm(wechat.network ~ edges +
+                    nodecov('age') +
+                    absdiff('bmi') +
+                    nodematch('gender') +
+                    nodematch('smoke'),
+   control=control.ergm(seed=40))
+
+summary(t1.model1)
+
+model2 <- ergm(wechat.network ~ edges +
+                    nodecov('gpa') +
+                    absdiff('bmi') +
+                    nodematch('gender') +
+                    nodematch('smoke', diff=TRUE),
+   control=control.ergm(seed=40))
+
+summary(model2)
+```
+
+### Latent space models
+
+```{r}
+library(latentnet)
+
+## model with the latent position only
+latentnet.t1 <- ergmm(wechat.network ~ euclidean(d=1), verbose=TRUE)
+mcmc.diagnostics(latentnet.t1)
+plot(latentnet.t1, pie=TRUE)
+
+t1.lsm.fit <- summary(latentnet.t1)
+t1.lsm.fit
+
+## BIC for model fit
+
+all.fit <- list()
+all.fit[[1]] <- t1.lsm.fit$bic
+
+for (d in 2:9){
+  latentnet.t1 <- ergmm(wechat.network ~ euclidean(d=d), verbose=TRUE)
+  t1.lsm.fit <- summary(latentnet.t1)
+  all.fit[[d]] <- t1.lsm.fit$bic
+}
+
+
+all.fit.mat <- do.call("cbind", all.fit)
+all.fit.mat
+
+all.fit.mat.nocov <- all.fit.mat
+
+bic29 <- all.fit.mat[6, ]
+bic29 <- c(8700.61, bic29)
+
+pdf("latent.space.bic.pdf", width = 7, height = 7)
+plot(1:9, bic29, ylab="BIC", xlab="Latent Dimension", type="o")
+dev.off()
+
+## plot the results
+system.time(latentnet.m2 <- ergmm(wechat.network ~ euclidean(d=2), verbose=TRUE))
+
+#t1.lsm.z <- latentnet.t1$mkl$Z
+
+
+pdf("latent.space.pdf", width = 7, height = 7)
+plot(latentnet.m2, main="", sub="", plot.means=F, plot.vars=F, vertex.col='black')
+dev.off()
+```
+
+
+```{r}
+system.time(latentnet.t1 <- ergmm(wechat.network ~ euclidean(d=2)+
+                    nodecov('gpa') +
+                    absdiff('bmi') +
+                    nodematch('gender') +
+                    nodematch('smoke', diff=TRUE), verbose=TRUE))
+mcmc.diagnostics(latentnet.t1)
+plot(latentnet.t1, pie=TRUE)
+
+t1.lsm.fit <- summary(latentnet.t1)
+t1.lsm.fit
+```
+

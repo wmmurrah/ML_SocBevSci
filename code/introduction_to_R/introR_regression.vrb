@@ -1,0 +1,38 @@
+\frametitle{Logistic Regression}
+\protect\hypertarget{logistic-regression}{}
+Can also use glm() to run other types of regression. See ?family
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(ISLR); }\FunctionTok{data}\NormalTok{(Default)}
+\NormalTok{lr.out }\OtherTok{\textless{}{-}} \FunctionTok{glm}\NormalTok{(default}\SpecialCharTok{\textasciitilde{}}\NormalTok{.,}\AttributeTok{family=}\StringTok{"binomial"}\NormalTok{,}\AttributeTok{data=}\NormalTok{Default)}
+\FunctionTok{summary}\NormalTok{(lr.out)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##
+## Call:
+## glm(formula = default ~ ., family = "binomial", data = Default)
+##
+## Deviance Residuals:
+##     Min       1Q   Median       3Q      Max
+## -2.4691  -0.1418  -0.0557  -0.0203   3.7383
+##
+## Coefficients:
+##               Estimate Std. Error z value Pr(>|z|)
+## (Intercept) -1.087e+01  4.923e-01 -22.080  < 2e-16 ***
+## studentYes  -6.468e-01  2.363e-01  -2.738  0.00619 **
+## balance      5.737e-03  2.319e-04  24.738  < 2e-16 ***
+## income       3.033e-06  8.203e-06   0.370  0.71152
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+##
+## (Dispersion parameter for binomial family taken to be 1)
+##
+##     Null deviance: 2920.6  on 9999  degrees of freedom
+## Residual deviance: 1571.5  on 9996  degrees of freedom
+## AIC: 1579.5
+##
+## Number of Fisher Scoring iterations: 8
+\end{verbatim}

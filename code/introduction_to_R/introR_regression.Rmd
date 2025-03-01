@@ -1,0 +1,355 @@
+---
+title: "Intro R and Regression"
+author: "Ross Jacobucci"
+fontsize: 8pt
+output: beamer_presentation
+
+---
+## Outline
+
+
+This script will go over the basics of programming in R along with covering Smoothing and Stepwise Regression
+\
+\
+To get started, I recommend downloading Rstudio as an interface to R. Benefits include:
+
++ Easier to download packages
++ Easier to view plots
++ Can load datasets without code
+
+## Loading Datasets
+
+
+Many datasets that we will be using come with installed packages
+```{r}
+library(MASS) # for boston data
+data(Boston)
+```
+Now the Boston dataset is in your workplace
+```{r}
+head(Boston[,1:7],6)
+```
+
+## Load your own datasets
+
+
+Data saved as .dat or .txt
+```{r, eval=FALSE}
+data = read.table(file.choose(),sep="",header=F,na.strings="NA")
+```
+.csv
+```{r, eval=FALSE}
+data = read.csv(file.choose(),header=T,na.strings=".")
+```
+.sav for SPSS files
+```{r, eval=FALSE}
+library(foreign)
+data = read.spss(file.choose(),to.data.frame=TRUE)
+```
+.sas7bdat for SAS data files -- note doesn't work very well, best to convert first
+```{r,eval=FALSE}
+library(sas7bdat)
+data = read.sas7bdat(file.choose())
+# note many options
+```
+
+
+## Subsetting datasets
+
+Let's say I have a dataset read in fine. How about subsetting columns and rows:
+* specific columns -- two ways
+```{r,eval=FALSE}
+library(MASS)
+data(Boston)
+## I want specific columns
+
+Boston.sub <- Boston[,c(1,2,8,9)]
+## or
+Boston.sub <- Boston[,c("crim","zn","dis","rad")]
+```
+Have to use c() to combine non-continuous elements in R 
+!!!!!! VERY IMPORTANT !!!!!
+\
+\
+How about rows -- Same process but better shortcuts
+```{r}
+comps <- complete.cases(Boston)
+Boston.comp <- Boston[comps,]
+
+subs <- Boston$zn == 0
+Boston.sub <- Boston[subs,]
+dim(Boston.sub)
+```
+
+Notice: left of comma = row indicator; right = column indicator
+
+
+## Dataset Types
+
+For manipulating datasets, almost always best to make sure in data.frame
+```{r,eval=FALSE}
+library(MASS)
+data(Boston)
+
+Boston.df <- data.frame(Boston)
+```
+Can tell type by running str()
+
+Some R packages require X and Y variables to be in separate matrices
+```{r,eval=FALSE}
+library(MASS)
+data(Boston)
+
+Y <- as.numeric(Boston$medv)
+X <- data.matrix(Boston[,-14])
+
+out <- lm.fit(X,Y)
+```
+This is very specific to data mining packages
+
+## Missing Data
+
+Can be summed up in two words: Not Fun
+
+R requires all missingness to be coded as NA, therefore it is best to deal with when reading in data:
+```{r, eval=FALSE}
+data = read.csv(file.choose(),header=T,na.strings=".")
+```
+This takes all missing values coded with a period in the original dataset and converts them to NA for R
+
+Once you have a dataset in R and missingness coded as NA:
+
+```{r, eval=TRUE}
+# have to use is.na a lot
+is.na(c(1,2,NA,6))
+```
+Returns a logical indicator. Can save this to subset dataset based on number of missings
+
+## Missing Data Continued
+
+
+```{r, eval=TRUE}
+library(psych)
+data(bfi)
+dim(bfi)
+```
+
+Now, subsetting based on number of missing values per person
+```{r, eval=TRUE}
+ids <- rowSums(is.na(bfi)) < 3
+bfi.sub <- bfi[ids,]
+dim(bfi.sub)
+
+```
+
+## Variable Types
+
+This is really important as it will change the type of estimator used
+e.g. logistic vs. linear regression
+
+```{r,eval=TRUE}
+bfi.sub <- bfi[,1:5]
+library(rpart)
+out1 <- rpart(A1 ~ ., bfi.sub)
+out1
+```
+
+
+## Variable Types Continued
+
+```{r,eval=TRUE}
+out2 <- rpart(as.factor(A1) ~ ., bfi.sub)
+out2
+```
+
+Changing the variable type, from integer to factor also changes the cost function. This results in very different equations and also very different results. 
+\
+\
+Most important is the variable type of the Y variable. Also can change it in the actual function by setting "family ="
+\
+\
+Also can change variable type in dataset and the data mining function will recognize this. However, I almost always just include it in the actual script to make sure it changes to the correct estimator.
+
+## How to get help
+
+```{r,eval=FALSE}
+library(caret)
+?train
+```
+However, I usually just google the R package and look at the manual
+\
+\
+Once you have run a script and have it save as an object, you can
+```{r,eval=FALSE}
+library(MASS)
+data(Boston)
+out <- lm(medv ~ ., data=Boston)
+str(out)
+```
+Using str() will list all of the attributes of the "out" object. This is important to use if print() or summary () dont 
+give you the information you want. Most applicable if you need nitty gritty details
+
+## Installing Packages
+
+```{r,eval=FALSE}
+install.packages("MASS",dependencies=TRUE)
+```
+
+Since I use Rstudio, I almost always use the button interface in the bottom right panel to install packages. This automatically installs the other packages the package you want to install depends on. 
+
+Also, it is also possible to install package directly from source. Later in the week we will be working with the longRPart package that is currently not maintained in CRAN, thus you have to download a version from the archiv and install from source.
+
+```{r,eval=FALSE}
+install.packages("~/GitHub/SearchWkshp_labs16/longRPart_1.0.tar.gz",
+                 type = "source")
+```
+
+Also note that packages depend on the build of R. For many packages, you have to have the version of R that matches the R version that the package was built under. This is why when you update your R version, you have to update a lot of packages, and vice versa.
+
+## Parallelization
+
+The caret package makes it easy to parallelize different methods. Its built in to their control function
+http://topepo.github.io/caret/parallel.html
+
+```{r,eval=FALSE}
+library(MASS);library(caret)
+data(Boston)
+library(doParallel)
+cl <- makeCluster(detectCores())
+registerDoParallel(cl)
+
+out <- train(medv ~ ., data=Boston,method="rf")
+
+```
+
+A lot of the methods we will be talking about are very parallelizable and will vastly decrease the amount of time it takes to run
+
+## Most Important Details for Learning R
+
+1. Read in data
+2. How to subset dataset
+3. Missing data handling
+4. Variable types
+5. Understand where the results go and how to access them
+6. How to install and the intricacies to each package
+7. How to parallelize analyses
+
+This is obviously not enought time to cover R as a programming language but our goal is to give you a working knowledge and learn enough as we proceed that you can implement all of the models we talk about.
+
+# Questions?
+
+
+## Regression
+
+### Linear Regression
+```{r}
+data.1<-read.table("/Volumes/GoogleDrive/My Drive/Statistical_Horizons/May2022/data/apexpos.dat")
+names(data.1) = c('id', 'apexpos', 'fsiq7')
+head(data.1)
+
+# Sort Data
+data.2 <- data.1[order(data.1$apexpos),]
+
+attach(data.2)
+
+## Plotting empirical data ##
+
+plot(apexpos, fsiq7, ylab = 'Full Scale IQ', xlab = 'PHE Exposure')
+```
+
+## Linear Regression Continued
+
+```{r}
+
+lm.1 = lm(fsiq7 ~ apexpos)
+
+summary(lm.1)
+
+#plot(apexpos, fitted(lm.1), ylab = 'Predicted Full Scale IQ', xlab = 'PHE Exposure')
+
+#plot(apexpos, fsiq7, ylab = 'Full Scale IQ', xlab = 'PHE Exposure')
+#abline(lm(fsiq7 ~ apexpos), col="red")
+```
+
+## Plot Model
+```{r,message=FALSE,fig.height=4,fig.width=7}
+library(ggplot2)
+
+plot.1 = ggplot(data.1, aes(x=apexpos, y=fsiq7)) + geom_point() +
+              stat_smooth(method='lm', formula = y ~ x, size = 1) +
+              xlab('PHE Exposure') + ylab('Age 7 Full Scale IQ')
+print(plot.1)
+```
+
+## Regression Diagnostics on Linear Regression Model 
+
+```{r,message=FALSE}
+library(car)
+
+#Outlier Test
+outlierTest(lm.1) # Bonferonni p-value for most extreme obs
+```
+## QQ Plot
+```{r}
+qqPlot(lm.1, main="QQ Plot") #qq plot for studentized resid 
+```
+## Cook's Distance
+```{r}
+cook = cooks.distance(lm.1)
+plot(cook,ylab="Cooks distances")
+```
+
+## Plot Residuals
+```{r,fig.height=4,fig.width=7}
+# Plots
+layout( cbind( c(0,0,1,1,1,1,1,0,0), rep(2,9) ) )
+plot(apexpos, lm.1$res)
+plot(lm.1$fitted, lm.1$res)
+
+```
+
+## Leverage Plot
+```{r,fig.height=4,fig.width=7}
+
+leverage = hat(model.matrix(lm.1))
+plot(leverage)
+```
+
+## Quadratic Regression
+
+```{r}
+apexpos2 = apexpos^2
+
+lm.2 = lm(fsiq7 ~ apexpos + apexpos2)
+
+summary(lm.2)
+```
+
+Didn't really improve the fit, and it looks like we are still violating some assumptions (if you run the same plots as with lm.1). 
+
+## Easier Way to do Quadratic+
+
+```{r}
+lm.3 = lm(fsiq7 ~ poly(apexpos,3))
+
+summary(lm.3)
+```
+
+
+
+## Get standardized coefficients
+```{r,eval=TRUE,message=FALSE}
+library(QuantPsyc)
+lm.beta(lm.1)
+```
+
+
+## Logistic Regression
+
+Can also use glm() to run other types of regression. See ?family
+
+```{r}
+library(ISLR); data(Default)
+lr.out <- glm(default~.,family="binomial",data=Default)
+summary(lr.out)
+```
