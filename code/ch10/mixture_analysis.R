@@ -1,5 +1,6 @@
 # read in data_kev.csv
-grit1 = read.csv("C:\\Users\\kjgrimm\\Documents\\ASU\\Data Mining Book\\Chapter 9\\data.csv", header=T, sep=",")
+# grit1 = read.csv("C:\\Users\\kjgrimm\\Documents\\ASU\\Data Mining Book\\Chapter 9\\data.csv", header=T, sep=",")
+grit1 <- read.csv("code/ch10/data_kev.csv", header = TRUE, sep = ",")
 summary(grit1)
 dim(grit1)
 
